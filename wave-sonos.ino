@@ -16,8 +16,10 @@ void ethConnectError()
   Serial.println(F("Sonos client connection error (possibly harmless)"));
 }
 
+#ifndef DRY_RUN
 EthernetClient ethernet;
 SonosUPnP* sonos;
+#endif
 
 void printIP(IPAddress ip) {
   for (byte i = 0; i < 4; ++i) {
@@ -101,10 +103,12 @@ void setup() {
 
   Serial.begin(9600);
 
+#ifndef DRY_RUN
   setupDHCP();
 
   printSonosIP();
   sonos = new SonosUPnP(ethernet, ethConnectError);
+#endif
 }
 
 byte on;
@@ -118,11 +122,13 @@ void loop() {
       setLed(on ? HIGH : LOW);
       Serial.println(on ? F("On") : F("Off"));
 
+#ifndef DRY_RUN
       if (on) {
         sonos->play(SONOS_IP);
       } else {
         sonos->pause(SONOS_IP);
       }
+#endif
     }
     delay(SAMPLING_INTERVAL);
   }
