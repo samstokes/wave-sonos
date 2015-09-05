@@ -87,7 +87,6 @@ void setup() {
   sonos = new SonosUPnP(ethernet, ethConnectError);
 }
 
-short lightLevel;
 byte on;
 
 void loop() {
