@@ -67,12 +67,32 @@ void ledOff() {
   setLed(LOW);
 }
 
+#define SAMPLING_INTERVAL 100
+#define NUM_SAMPLES 80
+typedef short SampleIndex;
+
+short lightSamples[NUM_SAMPLES];
+long lightTotal;
+SampleIndex sampleIndex = 0;
+
 short getLightLevel() {
   short level = analogRead(PHOTORESISTOR_PIN);
+  lightSamples[sampleIndex] = level;
+  SampleIndex nextSampleIndex = (sampleIndex + 1) % NUM_SAMPLES;
+  lightTotal = lightTotal + level - lightSamples[nextSampleIndex];
+  sampleIndex = nextSampleIndex;
+  if (
 #ifdef DEBUG
-  Serial.print("Light level: ");
-  Serial.println(level, DEC);
+      true
+#else
+      0 == sampleIndex
 #endif
+     ) {
+    Serial.print(F("Light level: "));
+    Serial.println(level, DEC);
+    Serial.print(F("Average over time window: "));
+    Serial.println(lightTotal / NUM_SAMPLES, DEC);
+  }
   return level;
 }
 
@@ -91,21 +111,21 @@ byte on;
 
 void loop() {
   byte toggle = !on;
-  while (getLightLevel() < 450) {
+
+  while (getLightLevel() * (NUM_SAMPLES * 3L) < lightTotal * 2L) {
     if (on != toggle) {
       on = toggle;
       setLed(on ? HIGH : LOW);
-      Serial.print(F("On: "));
-      Serial.println(on, BIN);
+      Serial.println(on ? F("On") : F("Off"));
+
+      if (on) {
+        sonos->play(SONOS_IP);
+      } else {
+        sonos->pause(SONOS_IP);
+      }
     }
-    delay(50);
+    delay(SAMPLING_INTERVAL);
   }
 
-  if (on) {
-    sonos->play(SONOS_IP);
-  } else {
-    sonos->pause(SONOS_IP);
-  }
-
-  delay(100);
+  delay(SAMPLING_INTERVAL);
 }
