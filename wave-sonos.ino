@@ -73,6 +73,13 @@ void setLittleLed(byte value) {
 #endif
 }
 
+void dimLittleLed() {
+  analogWrite(LITTLE_LED_PIN, 0x40);
+#ifdef DEBUG
+  Serial.println("Little LED: dim");
+#endif
+}
+
 void setBigLed(byte value) {
   digitalWrite(BIG_LED_PIN, value);
 #ifdef DEBUG
@@ -122,6 +129,7 @@ void setup() {
 
 bool on;
 long thresholdAtDrop = -1L;
+SampleIndex indexAtSustainedDrop = -1;
 
 bool seenDrop() { return thresholdAtDrop >= 0L; }
 void setSeenDrop() {
@@ -130,6 +138,19 @@ void setSeenDrop() {
 }
 void clearSeenDrop() {
   thresholdAtDrop = -1L;
+  setLittleLed(LOW);
+}
+
+bool seenSustainedDrop() { return indexAtSustainedDrop >= 0; }
+bool shouldForgetSustainedDrop() {
+  return sampleIndex == indexAtSustainedDrop;
+}
+void setSeenSustainedDrop() {
+  indexAtSustainedDrop = sampleIndex;
+  dimLittleLed();
+}
+void clearSeenSustainedDrop() {
+  indexAtSustainedDrop = -1;
   setLittleLed(LOW);
 }
 
@@ -168,6 +189,13 @@ void loop() {
       Serial.println(F(" so assuming the room lights went out"));
 
       clearSeenDrop();
+      setSeenSustainedDrop();
+    }
+  } else if (seenSustainedDrop()) {
+    if (shouldForgetSustainedDrop()) {
+      Serial.println(F("Time to forget the room lights going out"));
+
+      clearSeenSustainedDrop();
     }
   } else {
     if (belowThreshold(level, lightTotal)) {
