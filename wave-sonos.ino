@@ -9,7 +9,7 @@ byte DUMMY_MAC[] = {
 const IPAddress SONOS_IP(192, 168, 1, 143);
 bool on;
 
-const byte LITTLE_LED_PIN = 6;
+const byte LITTLE_LED_PIN = 3;
 const byte BIG_LED_PIN = 7;
 const byte PHOTORESISTOR_PIN = 0;
 
