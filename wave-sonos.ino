@@ -151,6 +151,8 @@ void loop() {
       setBigLed(on ? HIGH : LOW);
       Serial.println(on ? F("On") : F("Off"));
 
+      clearSeenDrop();
+
 #ifndef DRY_RUN
       if (on) {
         sonos->play(SONOS_IP);
@@ -158,8 +160,6 @@ void loop() {
         sonos->pause(SONOS_IP);
       }
 #endif
-
-      clearSeenDrop();
     } else if (!belowThreshold(level, lightTotal)) {
       Serial.print(F("Average light level "));
       Serial.print(lightTotal / NUM_SAMPLES, DEC);
