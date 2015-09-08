@@ -124,8 +124,8 @@ bool on;
 long thresholdAtDrop = -1L;
 
 bool seenDrop() { return thresholdAtDrop >= 0L; }
-void setSeenDrop(long threshold) {
-  thresholdAtDrop = threshold;
+void setSeenDrop() {
+  thresholdAtDrop = lightTotal;
   setLittleLed(HIGH);
 }
 void clearSeenDrop() {
@@ -177,7 +177,7 @@ void loop() {
       Serial.println(lightTotal / NUM_SAMPLES, DEC);
 
       if (lightTotal >= MIN_THRESHOLD) {
-        setSeenDrop(lightTotal);
+        setSeenDrop();
       } else {
         Serial.print(F("Ignoring as average is below "));
         Serial.println(MIN_THRESHOLD / NUM_SAMPLES, DEC);
