@@ -8,8 +8,20 @@ byte DUMMY_MAC[] = {
 
 const IPAddress SONOS_IP(192, 168, 1, 143);
 
-const byte LED_PIN = 7;
+const byte LITTLE_LED_PIN = 6;
+const byte BIG_LED_PIN = 7;
 const byte PHOTORESISTOR_PIN = 0;
+
+const long TIME_WINDOW = 8000L;
+const long SAMPLING_INTERVAL = 100L;
+const long NUM_SAMPLES = TIME_WINDOW / SAMPLING_INTERVAL;
+typedef short SampleIndex;
+/*
+ * Ignore average light thresholds below this, to prevent oversensitivity
+ * in dark conditions.  This is mainly to prevent the indicator LEDs from
+ * themselves triggering the threshold detection and creating a loop.
+ */
+const short MIN_THRESHOLD = NUM_SAMPLES * 100;
 
 void ethConnectError()
 {
@@ -53,26 +65,21 @@ void printSonosIP() {
   Serial.println();
 }
 
-void setLed(byte value) {
-  digitalWrite(LED_PIN, value);
+void setLittleLed(byte value) {
+  digitalWrite(LITTLE_LED_PIN, value);
 #ifdef DEBUG
-  Serial.print("LED: ");
+  Serial.print("Little LED: ");
   Serial.println(value, DEC);
 #endif
 }
 
-void ledOn() {
-  setLed(HIGH);
+void setBigLed(byte value) {
+  digitalWrite(BIG_LED_PIN, value);
+#ifdef DEBUG
+  Serial.print("Big LED: ");
+  Serial.println(value, DEC);
+#endif
 }
-
-void ledOff() {
-  setLed(LOW);
-}
-
-const long TIME_WINDOW = 8000L;
-const long SAMPLING_INTERVAL = 100L;
-const long NUM_SAMPLES = TIME_WINDOW / SAMPLING_INTERVAL;
-typedef short SampleIndex;
 
 short lightSamples[NUM_SAMPLES];
 long lightTotal;
@@ -100,7 +107,8 @@ short getLightLevel() {
 }
 
 void setup() {
-  pinMode(LED_PIN, OUTPUT);
+  pinMode(LITTLE_LED_PIN, OUTPUT);
+  pinMode(BIG_LED_PIN, OUTPUT);
 
   Serial.begin(9600);
 
@@ -112,15 +120,35 @@ void setup() {
 #endif
 }
 
-byte on;
+bool on;
+long thresholdAtDrop = -1L;
+
+bool seenDrop() { return thresholdAtDrop >= 0L; }
+void setSeenDrop(long threshold) {
+  thresholdAtDrop = threshold;
+  setLittleLed(HIGH);
+}
+void clearSeenDrop() {
+  thresholdAtDrop = -1L;
+  setLittleLed(LOW);
+}
+
+bool belowThreshold(short level, long thresholdTotal) {
+  return level * (NUM_SAMPLES * 3L) < thresholdTotal * 2L;
+}
 
 void loop() {
-  byte toggle = !on;
+  short level = getLightLevel();
 
-  while (getLightLevel() * (NUM_SAMPLES * 3L) < lightTotal * 2L) {
-    if (on != toggle) {
-      on = toggle;
-      setLed(on ? HIGH : LOW);
+  if (seenDrop()) {
+    if (!belowThreshold(level, thresholdAtDrop)) {
+      Serial.print(F("Light level "));
+      Serial.print(level, DEC);
+      Serial.print(F(" rose back above average of "));
+      Serial.println(thresholdAtDrop / NUM_SAMPLES, DEC);
+
+      on = !on;
+      setBigLed(on ? HIGH : LOW);
       Serial.println(on ? F("On") : F("Off"));
 
 #ifndef DRY_RUN
@@ -130,8 +158,31 @@ void loop() {
         sonos->pause(SONOS_IP);
       }
 #endif
+
+      clearSeenDrop();
+    } else if (!belowThreshold(level, lightTotal)) {
+      Serial.print(F("Average light level "));
+      Serial.print(lightTotal / NUM_SAMPLES, DEC);
+      Serial.print(F(" dropped to near light level "));
+      Serial.print(level, DEC);
+      Serial.println(F(" so assuming the room lights went out"));
+
+      clearSeenDrop();
     }
-    delay(SAMPLING_INTERVAL);
+  } else {
+    if (belowThreshold(level, lightTotal)) {
+      Serial.print(F("Light level "));
+      Serial.print(level, DEC);
+      Serial.print(F(" dropped below average of "));
+      Serial.println(lightTotal / NUM_SAMPLES, DEC);
+
+      if (lightTotal >= MIN_THRESHOLD) {
+        setSeenDrop(lightTotal);
+      } else {
+        Serial.print(F("Ignoring as average is below "));
+        Serial.println(MIN_THRESHOLD / NUM_SAMPLES, DEC);
+      }
+    }
   }
 
   delay(SAMPLING_INTERVAL);
