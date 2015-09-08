@@ -7,10 +7,14 @@ byte DUMMY_MAC[] = {
   0x00, 0xAA, 0xBB, 0xCC, 0xDE, 0x02 };
 
 const IPAddress SONOS_IP(192, 168, 1, 143);
+bool on;
 
 const byte LITTLE_LED_PIN = 6;
 const byte BIG_LED_PIN = 7;
 const byte PHOTORESISTOR_PIN = 0;
+
+const long SONOS_STATUS_POLL_DELAY = 5000L;
+long sonosLastStateUpdate;
 
 const long TIME_WINDOW = 8000L;
 const long SAMPLING_INTERVAL = 100L;
@@ -113,6 +117,25 @@ short getLightLevel() {
   return level;
 }
 
+void setOn(bool newOn) {
+  if (on != newOn) {
+    on = newOn;
+    setBigLed(on ? HIGH : LOW);
+  }
+}
+
+void syncSonosState() {
+  sonosLastStateUpdate = millis();
+#ifdef DRY_RUN
+  Serial.println(F("This is where I would sync the playing state"));
+#else
+  bool newOn = sonos->getState(SONOS_IP) == SONOS_STATE_PLAYING;
+  Serial.print(F("Current state: "));
+  Serial.println(newOn, BIN);
+  setOn(newOn);
+#endif
+}
+
 void setup() {
   pinMode(LITTLE_LED_PIN, OUTPUT);
   pinMode(BIG_LED_PIN, OUTPUT);
@@ -124,10 +147,11 @@ void setup() {
 
   printSonosIP();
   sonos = new SonosUPnP(ethernet, ethConnectError);
+
+  syncSonosState();
 #endif
 }
 
-bool on;
 long thresholdAtDrop = -1L;
 SampleIndex indexAtSustainedDrop = -1;
 
@@ -159,6 +183,11 @@ bool belowThreshold(short level, long thresholdTotal) {
 }
 
 void loop() {
+  long now = millis();
+  if (sonosLastStateUpdate > now || now > sonosLastStateUpdate + SONOS_STATUS_POLL_DELAY) {
+    syncSonosState();
+  }
+
   short level = getLightLevel();
 
   if (seenDrop()) {
@@ -168,18 +197,13 @@ void loop() {
       Serial.print(F(" rose back above average of "));
       Serial.println(thresholdAtDrop / NUM_SAMPLES, DEC);
 
-      on = !on;
-      setBigLed(on ? HIGH : LOW);
+      setOn(!on);
       Serial.println(on ? F("On") : F("Off"));
 
       clearSeenDrop();
 
 #ifndef DRY_RUN
-      if (on) {
-        sonos->play(SONOS_IP);
-      } else {
-        sonos->pause(SONOS_IP);
-      }
+      sonos->togglePause(SONOS_IP);
 #endif
     } else if (!belowThreshold(level, lightTotal)) {
       Serial.print(F("Average light level "));
