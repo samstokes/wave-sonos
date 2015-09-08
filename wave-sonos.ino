@@ -69,8 +69,9 @@ void ledOff() {
   setLed(LOW);
 }
 
-#define SAMPLING_INTERVAL 100
-#define NUM_SAMPLES 80
+const long TIME_WINDOW = 8000L;
+const long SAMPLING_INTERVAL = 100L;
+const long NUM_SAMPLES = TIME_WINDOW / SAMPLING_INTERVAL;
 typedef short SampleIndex;
 
 short lightSamples[NUM_SAMPLES];
