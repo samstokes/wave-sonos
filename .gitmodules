@@ -1,3 +1,6 @@
 [submodule "lib/sonos"]
 	path = lib/sonos
 	url = https://github.com/samstokes/sonos.git
+[submodule "lib/microxpath"]
+	path = lib/microxpath
+	url = https://github.com/tmittet/microxpath.git
