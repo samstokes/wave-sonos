@@ -6,12 +6,24 @@
 byte DUMMY_MAC[] = {
   0x00, 0xAA, 0xBB, 0xCC, 0xDE, 0x02 };
 
-const IPAddress SONOS_IP(192, 168, 1, 143);
+#ifndef SPEAKER_IP_COMMAS
+#error "Please define e.g. -DSPEAKER_IP_COMMAS=192,168,1,143"
+#endif
+const IPAddress SONOS_IP(SPEAKER_IP_COMMAS);
 bool on;
 
-const byte LITTLE_LED_PIN = 3;
-const byte BIG_LED_PIN = 7;
-const byte PHOTORESISTOR_PIN = 0;
+#ifndef PHOTORESISTOR_PIN_NUMBER
+#error "Please define e.g. -DPHOTORESISTOR_PIN_NUMBER=0"
+#endif
+const byte PHOTORESISTOR_PIN = PHOTORESISTOR_PIN_NUMBER;
+#ifndef BIG_LED_PIN_NUMBER
+#error "Please define e.g. -DBIG_LED_PIN_NUMBER=7"
+#endif
+const byte BIG_LED_PIN = BIG_LED_PIN_NUMBER;
+#ifndef LITTLE_LED_PIN_NUMBER
+#error "Please define e.g. -DLITTLE_LED_PIN_NUMBER=3"
+#endif
+const byte LITTLE_LED_PIN = LITTLE_LED_PIN_NUMBER;
 
 const long SONOS_STATUS_POLL_DELAY = 5000L;
 long sonosLastStateUpdate;
